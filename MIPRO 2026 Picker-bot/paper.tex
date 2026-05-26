@@ -12,155 +12,257 @@
 \usepackage{multicol}
 \usepackage{array}
 \usepackage{url}
+\usepackage{booktabs}
+\usepackage{float}
+
+\graphicspath{{../Picker-bot content/imgs/}}
 
 \begin{document}
 
-\title{Paper Title}
+\title{Automated Component Recovery and Custom Kit Assembly System for Educational Circuit Kits}
 
 \author{
 \IEEEauthorblockN{
-A.B. Firstauthor\IEEEauthorrefmark{1},
-C. Secondauthor\IEEEauthorrefmark{2},
-D.E. Thirdauthor\IEEEauthorrefmark{3}
+A. Mishra\IEEEauthorrefmark{1},
+F. Mohammed\IEEEauthorrefmark{1}
 }
 
-\IEEEauthorblockA{\IEEEauthorrefmark{1} %1st affiliation 
-Name of Institution/Department, City, Country}
+\IEEEauthorblockA{\IEEEauthorrefmark{1}
+MSc Robotics, Middlesex University Dubai, Dubai, UAE}
 
-\IEEEauthorblockA{\IEEEauthorrefmark{2} %2nd affiliation 
-Name of Institution/Department, City, Country}
-
-corresponding\_author\_email@domain.com
-
-\thanks{Identify applicable sponsor/s here. If no sponsors, delete this \LaTeX{} command}
+m00983641@mdx.ac.ae, m01088120@mdx.ac.ae
 }
 
 \maketitle
 
 \begin{abstract}
-The abstract should outline the main ideas and results of the paper. It should not exceed 200 words. Do not cite references in the abstract. CRITICAL: Do not use symbols, special characters, footnotes, or math in Paper Title or Abstract.
+Educational institutions frequently provide students with circuit development kits, such as Arduino modules, for practical coursework. However, when these kits are returned, they often lack critical components, rendering them unsuitable for redistribution as complete sets. This paper proposes an automated robotic solution to address this logistical and environmental inefficiency. Unlike traditional industrial assembly systems that merely construct standard products from uniform supply lines, the proposed system recovers components from existing, incomplete kits. Utilizing a machine vision system developed in Python, the system identifies available modules and communicates via TCP/IP with an EPSON RC8.0 simulator controlling a VT6-A901S 6-axis robot. This setup allows for the dynamic assembly of new kits based on custom Bills of Quantities (BOQs) submitted for specific projects. The result is a highly flexible, waste-reducing automated system that ensures students receive the exact components necessary for their modules.
 \end{abstract}
 
 \renewcommand\IEEEkeywordsname{Keywords}
 \begin{IEEEkeywords}
-\textit{component, formatting, style, styling, insert}
+\textit{Robotic Assembly, Machine Vision, Component Recovery, EPSON RC8.0, Automation, E-waste}
 \end{IEEEkeywords}
 
 \section{Introduction}
 
-This template provides authors with most of the formatting specifications needed for preparing electronic versions of their papers for the MIPRO conference. The goal is to simulate the usual appearance of papers in an IEEE conference proceedings, with some tweaks specific to MIPRO.
+Practical electronics and robotics education heavily relies on the provision of development kits, predominantly featuring microcontrollers like the Arduino, alongside various sensors, actuators, and passive components. While students are generally encouraged to keep these kits for future innovation, some return them at the end of the academic term or leave their components in the form of assembled projects.
 
-As usual for the scientific paper in general, and conference paper in particular, the paper prepared for MIPRO should consist of a title, author's name(s), affiliation, abstract, keywords, introduction, main text with section titles and subheadings (if any), conclusion, acknowledgment (if any), references and optional appendices. The length of the paper is limited to six pages including illustrations.
+A significant problem arises during this return process: kits are frequently returned with missing, damaged, or misplaced modules. Because these returned kits are incomplete, they cannot be directly re-issued to incoming students who require standard, comprehensive module kits. Institutions thus face a build-up of partial kits, leading to unnecessary procurement costs and increased electronic waste.
 
-\section{Ease of Use}
+To address this, an automated solution capable of processing these partial kits is needed. The objective of this project is to develop a robotic system that sorts through returned components and dynamically builds new kits. By focusing on project-specific requirements rather than rigid, standard kit definitions, the system ensures that even if a returned kit lacks certain generic parts, the components it does contain can be optimally reallocated to students based on their exact project needs.
 
-\subsection{Paper Size}
+\section{Methodology}
 
-This template has been tailored for output on the A4 paper size. You are not allowed to use US letter-sized paper.
+\subsection{Evaluation of Existing Solutions}
 
-\subsection{Maintaining the Integrity of the Specifications}
+Automated kitting and assembly are well-established but they are almost exclusively designed for factory-stage production. Existing solutions primarily utilize Delta and SCARA (Selective Compliance Assembly Robot Arm) robots to pick and place uniform components from controlled feeder lines into packaging. Beyond factory stage production, automated sortation is also employed in large-scale waste management. For instance, facility-scale smart sortation systems utilize real-time machine vision combined with air jets and Delta robotic arms to autonomously recover valuable commodities, including e-waste, from mixed municipal solid waste streams~\cite{amp}. While these systems demonstrate the efficacy of AI-guided robotic sorting for high-volume material recovery, they operate on a facility scale designed for gross sorting rather than the precise, project-specific kitting of delicate microelectronic modules required in an educational setting.
 
-This electronic document is a “live” template and already defines the components of your paper (title, text, heads, etc.) in its style sheet. The template is used to format your paper and style the text. All margins, column widths, line spaces, and text fonts are prescribed; please do not alter them. You may note peculiarities. For example, the head margin in this template measures proportionately more than is customary. This measurement and others are deliberate, using specifications that anticipate your paper as one part of the entire proceedings, and not as an independent document. Please do not revise any of the current designations.
+These existing methodologies share a common limitation: they operate on the assumption of a continuous, uniform supply of new components. There is currently no widely adopted automated solution designed to recover loose, mixed components from pre-existing, partially depleted kits to create newly configured ones. Recent studies on automated e-waste recovery emphasize that the disassembly and salvaging of used electronics fundamentally differ from original production. Unlike new manufacturing, recovering used goods is characterized by high uncertainty, as components may be damaged, randomly oriented, or missing entirely~\cite{saenz}. Therefore, traditional deterministic factory automation is insufficient for these Re-X (Recycling, Re-use, Remanufacturing) activities, necessitating the flexible, data-driven robotic capabilities proposed in this project.
 
-\section{Prepare Your Paper Before Styling}
+\subsection{Proposed Unique Approach}
 
-Before formatting your paper, first write and save the content as a separate text file. Complete all content and organizational editing before formatting. Please note sections A-D below for more proofreading, spelling, and grammar information.
+The differentiating factor of the proposed solution lies in its intelligent recovery and flexible kitting approach. Rather than forcing staff to manually audit and sort thousands of individual components to rebuild standard kits, the system operates on a custom Bill of Quantities (BOQ) model.
 
-Keep your text and graphic files separate until the text has been formatted and styled. Do not use hard tabs, and limit the use of hard returns to only one return at the end of a paragraph. Do not add any pagination anywhere in the paper. Do not number text heads - the template will do that for you.
+Staff or students can submit custom project BOQs to the system. The automated system then identifies the required parts from the pool of returned components and selectively assembles a kit tailored specifically for that project. This transitions the institution from a ``push'' model (giving every student a standard kit regardless of need) to a ``pull'' model (assembling kits based strictly on project requirements), thereby maximizing the utility of returned inventory.
 
-\subsection{Abbreviations and Acronyms}
+\section{Implementation}
 
-Define abbreviations and acronyms the first time they are used in the text, even after they have been defined in the abstract. Abbreviations such as IEEE, SI, MKS, CGS, sc, dc, and rms do not have to be defined. Do not use abbreviations in the title or heads unless they are unavoidable.
+To realize this automated recovery and assembly system, a simulated robotic workcell has been developed, integrating high-level software control with industrial robotic simulation.
 
-\subsection{Units}
+\subsection{Machine Vision System}
 
-\begin{itemize}
-	\item	Use either SI (MKS) or CGS as primary units. (SI units are encouraged.) English units may be used as secondary units (in parentheses). An exception would be the use of English units as identifiers in trade, such as “3.5-inch disk drive”.
-	\item	Avoid combining SI and CGS units, such as current in amperes and magnetic field in oersteds. This often leads to confusion because equations do not balance dimensionally. If you must use mixed units, clearly state the units for each quantity that you use in an equation.
-	\item	Do not mix complete spellings and abbreviations of units: “Wb/m2” or “webers per square meter”, not “webers/m2”.  Spell out units when they appear in text: “. . . a few henries”, not “\ldots a few H”.
-	\item	Use a zero before decimal points: “0.25”, not “.25”. Use $cm^3$, not “cc”.
-\end{itemize}
-
-\subsection{Equations}
-
-Use standard \LaTeX{} features for writing equations, and don't forget to Number equations consecutively. As an example, here is an equation with number (\ref{eqn:one}).
-
-\begin{equation}
-	\label{eqn:one}
-	\alpha + \beta = \chi
-\end{equation}
-
-Use “(\ref{eqn:one})”, not “Eq. (\ref{eqn:one})” or “equation (\ref{eqn:one})”, except at the beginning of a sentence: “Equation (\ref{eqn:one}) is \ldots”
-
-\subsection{Some Common Mistakes}
-
-\begin{itemize}
-    \item The word “data” is plural, not singular.
-    \item The subscript for the permeability of vacuum $\mu_0$, and other common scientific constants, is zero with subscript formatting, not a lowercase letter “o”.
-    \item In American English, commas, semi-/colons, periods, question and exclamation marks are located within quotation marks only when a complete thought or name is cited, such as a title or full quotation. When quotation marks are used, instead of a bold or italic typeface, to highlight a word or phrase, punctuation should appear outside of the quotation marks. A parenthetical phrase or statement at the end of a sentence is punctuated outside of the closing parenthesis (like this). (A parenthetical sentence is punctuated within the parentheses.)
-    \item A graph within a graph is an “inset”, not an “insert”. The word alternatively is preferred to the word “alternately” (unless you mean something that alternates).
-    \item Do not use the word “essentially” to mean “approximately” or “effectively”.
-    \item In your paper title, if the words “that uses” can accurately replace the word “using”, capitalize the “u”; if not, keep using lowercase.
-    \item Be aware of the different meanings of the homophones “affect” and “effect”, “complement” and “compliment”, “discreet” and “discrete”, “principal” and “principle”.
-    \item Do not confuse “imply” and “infer”.
-    \item The prefix “non” is not a word; it should be joined to the word it modifies, usually without a hyphen.
-    \item There is no period after the “et” in the Latin abbreviation “et al.”.
-    \item The abbreviation “i.e.” means “that is”, and the abbreviation “e.g.” means “for example”.
-\end{itemize}
-
-An excellent style manual for science writers is \cite{young2002technical}.
-
-If your native language is not English, try to get a native English‑speaking colleague, or somebody fluent in English to proofread your paper. Use grammar existing in a text editor.
-
-\section{Using the Template}
-
-\subsection{Authors and Affiliations}
-
-A minimum of one author is required for all conference articles. The MIPRO template is designed so that author affiliations are not repeated each time for multiple authors of the same affiliation. Please keep your affiliations as succinct as possible (for example, do not differentiate among departments of the same organization). 
-
-\subsection{Titles}
-
-When writing titles, capitalize all words in the title, except for articles, prepositions, and conjunctions (unless they are the first word of a title).
-
-\subsection{Figures and Tables}
-
-\subsubsection{Positioning Figures and Tables}
-
-Let \LaTeX{} automatically position figures and tables. Large figures and tables may span across both columns. The tables must be unique. Do not continue the table in the next column or on the next page. Insert figures and tables after they are cited in the text. Use the abbreviation “Fig. \ref{fig:figure1}”, even at the beginning of a sentence.
-
-\begin{figure}
+\begin{figure}[t]
   \centering
-  \includegraphics{figure1.jpg}
-  \caption{Magnetization as a function of applied field. Note how the caption is centered in the column}
-  % Note that label MUST come AFTER caption. Otherwise, you'll not get proper references for the figure
-  \label{fig:figure1}
+  \includegraphics[width=\columnwidth]{threshold_pickerbot.png}
+  \caption{Image thresholding using OpenCV during the prototype phase.}
+  \label{fig:thresholding}
 \end{figure}
 
-\subsubsection{Figure Labels}
+The core intelligence of the automated pick-and-place operation lies within the machine vision architecture. This system is responsible for scanning the unstructured workbench domain, identifying electrical components, decoding their spatial orientation, and translating native pixel data into rigid Cartesian kinematics for the EPSON VT6-A901S manipulator. While many advanced industrial bin-picking solutions rely on line-of-sight 3D cameras, these sensors generate point clouds that are highly susceptible to spurious outliers when scanning cluttered, overlapping parts. These outliers can spoil a robot's obstacle avoidance planning and impede component segmentation, thus requiring computationally demanding filtering procedures~\cite{Franaszek}. To bypass the complexities of 3D point cloud filtration and maintain efficient real-time processing, this project deliberately utilizes a 2D planar overhead vision approach. The development of this system progressed through two distinct phases, ultimately culminating in an industrial-grade deep learning solution.
 
-Use words rather than symbols or abbreviations when writing Figure axis labels to avoid confusing readers. As an example, write the quantity “Magnetization”, or “Magnetization, M”, not just “M”. If including units in the label, present them within parentheses. Do not label axes only with units. In the example, write “Magnetization (A/m)” or “Magnetization {A[m(1)]}”, not just “A/m”. Do not label axes with a ratio of quantities and units. For example, write “Temperature (K)”, not “Temperature/K”.
+\subsubsection{Prototype Phase: Deterministic Computer Vision}
 
-\subsection{Footnotes}
+The initial pipeline applied Gaussian blurring and global binary thresholding (Fig.~\ref{fig:thresholding}) to isolate component footprints, then used \texttt{cv2.findContours} to extract boundaries. Sub-images were padded to 224$\times$224 tensors and classified with a Google Teachable Machine model. While functional in controlled conditions, the prototype collapsed under minor environmental changes: metallic glare erased texture data, background clutter produced false ``Noise'' classifications, and axis-aligned bounding boxes were incapable of recovering component rotation angle.
 
-Footnotes should be written using standard \LaTeX{} features\footnote{Like this footnote}.
+\subsubsection{Final Architecture: YOLOv8-OBB}
 
-\subsection{References}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{yolo_detect_v2.png}
+  \caption{Real-time component detection with YOLOv8-OBB, showing oriented bounding boxes and per-class confidence scores.}
+  \label{fig:yolo-detect}
+\end{figure}
 
-The template will number citations consecutively within brackets \cite{eason1955certain}. The sentence punctuation follows the bracket \cite{maxwell1873treatise}. Refer simply to the reference number, as in \cite{jacobs1963fine} -- do not use “Ref. \cite{jacobs1963fine}” or “reference \cite{jacobs1963fine}” except at the beginning of a sentence: “Reference \cite{jacobs1963fine} was the first \ldots”
+To resolve the catastrophic limitations of standard classification, the system was entirely re-architected around a YOLOv8-OBB state-of-the-art neural network. Rather than attempting to manually threshold and isolate items via algorithmic cropping, the YOLOv8 engine ingests the full-resolution uncropped camera frame in real time. Hyper-trained on a custom, heavily augmented Computer Vision Annotation Tool (CVAT) dataset featuring extreme lighting shifts and rotational variances, the OBB model dynamically bypasses all glare and localized clutter (Fig.~\ref{fig:yolo-detect}). While the manual image annotation required for this supervised learning approach demands significant engineering preparation time, recent comparative studies in robotic kitting demonstrate it is a necessary trade-off to achieve the high recognition quality and precise spatial accuracy required for successful bin-picking~\cite{Fager}. In a single forward pass, the deep convolutional layers output a 5-dimensional oriented tensor $\langle cx, cy, w, h, \theta \rangle$ alongside deterministic multi-class probabilities (Arduino, ESP32, LCD). This streamlines the recovery process compared to other recent robotic bin-picking solutions which rely on multi-stage hybrid pipelines---such as using YOLOv5 for initial top-view detection followed by an eye-in-hand camera movement to perform FAST and BRISK feature-matching for pose estimation~\cite{Taweesoontorn}. By natively deriving the resting rotation angle $\theta$ from a single overhead frame, the proposed OBB architecture entirely decoupled the system's reliance on perfect environmental lighting and complex multi-step image capture.
 
-Unless there are six authors or more give all authors' names; do not use “et al.”.
+\subsubsection{Logistics Filtering and BOQ Engine}
 
-Papers that have not been published, even if they have been submitted for publication, should be cited as “unpublished” \cite{elissa}. Papers that have been accepted for publication should be cited as “in press” \cite{nicole}. Capitalize only the first word in a paper title, except for proper nouns and element symbols.
+Once the vision system successfully extracts the precise $x$ and $y$ pixel centroids alongside the target item's class label, an intelligent logistics filter operates actively above the vision loop frame buffer. Rather than greedily passing every single detected piece of hardware down into the spatial coordinate mapping pipeline, the vision orchestrator interfaces natively with the BOQ model. The system evaluates the raw visual output and intelligently matches the detected inventory against the required logistical payload. It safely filters out and ignores surplus components even if they geometrically validate, ensuring that only precisely kitted workloads are forwarded to the spatial calibration engine for EPSON translation.
 
-For papers published in translation journals, please give the English citation first, followed by the original foreign-language citation \cite{yorozu1987electron}.
+\subsection{Spatial Calibration and Coordinate Mapping}
 
-Please use the IEEE style of citing references and reference format. The style details are available in \cite{IEEErefGuide} and also available as a Zotero style template.
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{graph_paper.jpg}
+  \caption{77-point homography calibration grid (11$\times$7 at 20\,mm spacing) overlaid on the workspace reference image.}
+  \label{fig:calibration_grid}
+\end{figure}
+
+A critical requirement of the system is the ability to translate pixel positions in the camera image into physical millimetre coordinates within the robot's world frame. This is achieved through a planar homography transformation, which provides a projective mapping between the two coordinate spaces.
+
+To establish this mapping, a 77-point calibration grid is used, arranged as 11 columns and 7 rows on the workspace surface with 20\,mm spacing (Fig.~\ref{fig:calibration_grid}). The world $X$-coordinate of each column decreases from $+100$\,mm to $-100$\,mm left to right, and the world $Y$-coordinate increases from 410\,mm to 530\,mm top to bottom, yielding a calibrated area of $200\,\text{mm} \times 120\,\text{mm}$. The operator captures a reference image of the grid and uses \texttt{tools/calibration\_clicker.py} to click each of the 77 intersection points. A second utility, \texttt{tools/sort\_and\_tag\_pixels.py}, sorts the recorded pixel coordinates and appends the corresponding world coordinates to produce a four-column CSV file.
+
+The homography matrix $\mathbf{H}$ is computed using OpenCV's \texttt{findHomography} with the standard least-squares (SLS) method rather than RANSAC. This choice is deliberate: the RANSAC estimator is designed to reject outliers, but the corner calibration points represent valid boundary constraints. Treating them as potential outliers would introduce systematic error near the workspace boundaries. At runtime, any detected pixel centroid $(p_x, p_y)$ is transformed to world coordinates $(w_x, w_y)$ via \texttt{cv2.perspectiveTransform} with $\mathbf{H}$.
+
+When the camera is repositioned vertically, the physical scale of the image changes, invalidating the original pixel-to-millimetre mapping. A height recalibration routine invoked via \texttt{pickerbot.py -{}-calibrate} addresses this without requiring a full recalibration. The operator clicks two points 20\,mm apart on a ruler image; the pixel distance between those clicks is measured and a scale factor is computed. Let $r_h$ and $r_v$ denote the mean pixel distance per 20\,mm in the horizontal and vertical axes from the original calibration. For a ruler measurement at angle $\theta$ relative to the horizontal, the expected pixel distance is:
+
+\begin{equation}
+  d_{\mathrm{expected}} = \sqrt{\left(r_h \cos\theta\right)^2 + \left(r_v \sin\theta\right)^2}
+  \label{eq:expected_dist}
+\end{equation}
+
+where $\theta = \arctan2(|\Delta y|, |\Delta x|)$. The scale factor is then:
+
+\begin{equation}
+  s = \frac{d_{\mathrm{measured}}}{d_{\mathrm{expected}}}
+  \label{eq:scale_factor}
+\end{equation}
+
+This formulation accounts for the fact that horizontal and vertical pixel densities may differ due to lens geometry or non-square pixel sampling. All 77 pixel coordinates are scaled around the grid centre point (index 38) by $s$, and the adjusted calibration is written to \texttt{calibration\_pixels\_scaled.csv} and referenced in \texttt{config.json} for all subsequent runs.
+
+\subsection{TCP/IP Communication Protocol}
+
+\begin{table}[t]
+  \caption{TCP/IP Command Set}
+  \label{tab:commands}
+  \renewcommand{\arraystretch}{1.35}
+  \centering
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{} l l p{3.3cm} c @{}}
+    \toprule
+    \textbf{Command} & \textbf{Params} & \textbf{Robot Action} & \textbf{Reply} \\
+    \midrule
+    \texttt{JUMP}    & x, y, z, u & Lift 50\,mm, translate to $(x,y,z{+}50)$, descend to $(x,y,z,u)$ & \texttt{OK} \\[2pt]
+    \texttt{GO}      & x, y, z    & Linear move to $(x,y,z)$                                         & \texttt{OK} \\[2pt]
+    \texttt{MOVE}    & x, y, z    & Linear move to $(x,y,z)$                                         & \texttt{OK} \\[2pt]
+    \texttt{PICK}    & x, y, z, u & Full pick-and-place sequence (Sec.~\ref{sec:epson})               & \texttt{OK} \\[2pt]
+    \texttt{STANDBY} & ---        & Return to home position                                           & \texttt{OK} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The Python control system communicates with the EPSON RC8 controller over a local TCP socket connection. For simulation the target address is \texttt{127.0.0.1} on port 2001; when connecting to the physical robot the address is changed to \texttt{192.168.X.Y} via \texttt{config.json}. All connection management and command dispatch is handled by the \texttt{pickerbot\_lib.sender} module, which maintains a module-level socket object across the lifecycle of a session.
+
+Commands are transmitted as plain ASCII strings in the format \texttt{CMD~X~Y~Z~U\textbackslash r\textbackslash n}, where $X$, $Y$, $Z$ are world coordinates in millimetres and $U$ is the tool rotation angle in degrees. The controller must reply \texttt{OK} before the next command is issued (Table~\ref{tab:commands}). In multi-component batch pick operations, the \texttt{epsonPickAll} function iterates over a list of world-coordinate strings, issuing a \texttt{PICK} command for each. Any non-\texttt{OK} response immediately aborts the batch and returns the arm to standby, ensuring that a partial failure such as a grip error or controller fault does not result in further motion in an undefined mechanical state.
+
+\subsection{EPSON RC8 Robot Program}
+\label{sec:epson}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{pick_trajectory.png}
+  \caption{Trajectory of the \texttt{PICK} command: three-phase Jump3 approach, gripper activation, transport to \texttt{PlacePoint}, and retract to standby.}
+  \label{fig:pick_trajectory}
+\end{figure}
+
+The robot-side program (\texttt{Epson/Pickerbot\_Receiver/Main.prg}) is written in Epson SPEL+, the proprietary scripting language for the RC8 controller, using a community TCP template~\cite{prasetyo2024} with predefined motion initialization parameters. After initialization it opens a TCP server on network channel \#201 at port 2001 and waits for an incoming client connection before entering its command-processing loop.
+
+Each received string is parsed by space delimiter, with the first token identifying the command and subsequent tokens providing coordinate arguments as floating-point values. The \texttt{PICK} command implements the most complex motion sequence (Fig.~\ref{fig:pick_trajectory}): the arm first lifts vertically from its current position, then translates horizontally to an elevated waypoint at $(x, y)$ with tool orientation $u$, and finally descends to the exact pick position. Once there, a digital output closes the gripper and a dwell time ensures a reliable mechanical grip. The robot then executes a second Jump3 sequence, lifting clear of the workspace and traveling to the predefined \texttt{PlacePoint} container, before deactivating the gripper output and returning to standby. A network error handler attempts to reopen the server socket on transient faults, allowing the system to recover without operator intervention.
+
+\subsection{Software Architecture and Entry Points}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{software_architecture.png}
+  \caption{Picker-Bot software architecture: three entry-point scripts sharing the \texttt{pickerbot\_lib} package containing \texttt{detection}, \texttt{calibration}, and \texttt{sender} submodules.}
+  \label{fig:architecture}
+\end{figure}
+
+The Python codebase is structured around the \texttt{pickerbot\_lib} shared library package, consolidating detection, calibration, and TCP communication into three importable submodules: \texttt{detection}, \texttt{calibration}, and \texttt{sender} (Fig.~\ref{fig:architecture}). Three entry-point scripts serve distinct operational modes. \texttt{pickerbot.py} orchestrates end-to-end pick sessions, loading calibration, running detection, and dispatching pick commands over TCP. \texttt{detect\_and\_classify.py} isolates the vision layer for development, exposing a live confidence threshold slider without a robot connection. \texttt{teleop\_mouse.py} enables manual arm positioning by transforming mouse clicks on the calibration image through the homography matrix and issuing \texttt{MOVE} commands, allowing spatial accuracy to be verified before automated operation.
+
+\subsection{Robotic Control and Simulation}
+
+The physical manipulation of components is simulated using the EPSON RC8.0 software environment. For the initial setup, a physical evaluation space of $200\,\text{mm} \times 120\,\text{mm}$ and a deposit spot 280\,mm above the workspace centre were used to create the mapping. The chosen robotic platform is the EPSON VT6-A901S~\cite{b2}, a 6-axis articulated robot arm with 980\,mm reach providing the approach-angle flexibility and high repeatability required for precise pick-and-place operations. Detailed installation, safety, and operational specifications are outlined in the official Epson VT6 series documentation~\cite{epsonvt6}.
+
+\section{Results}
+
+The implementation of the Picker-Bot system achieved a cohesive integration of deep-learning-based computer vision with industrial robotic control inside the EPSON RC8.0 simulation environment. The following subsections describe the observed behaviour of the system across its three principal layers of responsibility: perception, spatial reasoning, and supervised manipulation.
+
+\subsection{Vision System Performance and Robustness}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{yolo_results.png}
+  \caption{YOLOv8-OBB training metrics: loss curves and $mAP_{50}$ progression demonstrating rapid convergence and high detection accuracy on the in-distribution component set.}
+  \label{fig:yolo_results}
+\end{figure}
+
+The migration from a deterministic OpenCV prototype to the YOLOv8-OBB architecture produced a substantial improvement in detection reliability. The final model identified and classified Arduino, ESP32, and LCD modules within a single forward pass, recovering the resting rotation angle $\theta$ alongside the pixel centroid $(cx, cy)$ for each detected component without any auxiliary geometric post-processing. The learned representation absorbed much of the environmental variability that had previously destabilised the pipeline, including metallic glare from populated boards, localised clutter around the workpiece, and residual background texture. An explicitly trained ``noise'' class was suppressed at the output stage, ensuring only valid components were forwarded to the coordinate mapping layer.
+
+The quantitative evaluation is summarised in Fig.~\ref{fig:yolo_results}, which plots the loss curves and mean Average Precision over the course of training. The model converged rapidly and reached a final $mAP_{50}$ of 0.99, indicating near-perfect localisation and classification within the training distribution. A fixed confidence threshold of 0.7 eliminated the small number of remaining false positives attributable to glare artefacts, without requiring additional non-maximum suppression or hand-tuned filtering downstream.
+
+\subsection{Spatial Calibration and Mapping Accuracy}
+
+The homography-based calibration provided a reliable bridge between the two-dimensional camera image and the planar subset of the robot's workspace. The 77-point reference grid defined a calibrated operating region of approximately $200\,\text{mm} \times 120\,\text{mm}$ and covered the full region of interest visible to the overhead camera. The use of a standard least-squares solution for \texttt{findHomography}, rather than a RANSAC-based estimator, was an intentional design choice: it ensured that corner points on the workspace boundary were not discarded as statistical outliers, which would otherwise have contracted the effective calibrated area.
+
+The height recalibration routine handled the practical problem of camera repositioning without requiring the user to re-click every grid intersection. By measuring a known 20\,mm ruler segment in the new image and comparing its pixel length against the expected distance implied by the original horizontal and vertical grid pitches, the routine recovered an anisotropic scale factor and applied it uniformly around the grid centre. In testing this allowed vertical camera adjustments to be absorbed in seconds, with the resulting transformation verified interactively through \texttt{teleop\_mouse.py}: each click on the calibration reference image translated into a physical \texttt{MOVE} command whose terminal position agreed visually with the clicked feature.
+
+\subsection{Integrated Robot Control and Logistics}
+
+The combined control pipeline exercised the intended pull-based kitting behaviour end-to-end. When a BOQ was supplied, the system satisfied requirements in order of detection confidence and silently ignored surplus components---the behaviour expected of a logistics auditor rather than a greedy collector. In the absence of a BOQ it reverted to greedy mode and picked every non-noise detection. The full TCP command vocabulary was validated across extended simulation runs, with each command confirmed by \texttt{OK} before the next was dispatched. Synthetic fault injection verified that the abort-on-failure strategy correctly returned the arm to standby rather than advancing through an undefined mechanical state.
+
+\section{Future Discussion}
+
+While the current implementation successfully demonstrates the concept within a simulated environment, several avenues remain open. The most immediate step is transitioning to a physical VT6-A901S unit, requiring camera calibration under real lighting conditions, per-component gripper timing, and potentially a compliant gripper for delicate modules. Looking further ahead, a web portal for BOQ submission would make the system self-service, while IoT-guided AGVs~\cite{vlachos} could automate bin transport between storage and the workcell, completing the pull-model logistics pipeline end-to-end.
+
+\section{Conclusion and Discussion}
+
+\subsection{Critical Evaluation of System Integration}
+
+The development of the Picker-Bot system successfully transitioned from a standard industrial ``push'' model to a project-specific ``pull'' model for component kitting. The technical cornerstone of this project was the migration from deterministic OpenCV prototypes to the YOLOv8-OBB architecture. While the initial prototype was highly sensitive to environmental shifts, the final deep-learning model achieved a $mAP_{50}$ of 0.99, proving that high-accuracy bin-picking is viable in cluttered educational environments without the hardware overhead of 3D point-cloud sensors. The system's ``logistics auditor'' approach---using the BOQ engine to filter detections---ensures that the vision system both sees parts and intelligently manages inventory. By ignoring surplus components and focusing only on project requirements, the system directly addresses the original goal of reducing procurement costs and e-waste.
+
+\subsection{Implementation Constraints and Real-World Considerations}
+
+While the simulation in EPSON RC8.0 was successful, the present implementation carries a number of constraints that any physical deployment would need to address. The software-enforced inter-command delay was instrumental in keeping the simulated motion pipeline stable, but a fixed guard of this kind is unlikely to survive contact with real hardware unchanged. A physical workcell would benefit from a delay tuned to the inertial characteristics of the component currently being handled, since a heavier module such as the LCD settles differently from a lighter one such as the ESP32.
+
+The 77-point homography establishes a robust two-dimensional correspondence across the work surface, but remains a planar model of what is in practice a three-dimensional problem. Components of non-negligible height introduce a parallax offset that a purely planar calibration cannot account for, and which would manifest during the descending phase of the Jump3 trajectory as a small but systematic lateral error. Future directions would therefore need to incorporate a height-aware correction, either through explicit per-class offsets or through the introduction of a depth sensor.
+
+\subsection{Concluding Remarks}
+
+In conclusion, the Picker-Bot system provides a technically sound and environmentally sustainable solution for managing returned educational circuit kits. By integrating Oriented Bounding Box detection, planar homography, and TCP/IP-based control, the project demonstrates that modern AI can transform ``loose waste'' into valuable, project-ready assets. This implementation sets a precedent for how robotics can be applied to Re-X (Recovery and Re-use) activities within specialised microelectronic environments, effectively bridging the gap between waste management and logistical efficiency.
 
 \section*{acknowledgment}
 
-The preferred spelling of the word “acknowledgment” in America is without an “e” after the “g”. Avoid the stilted expression, “One of us (R. B. G.) thanks . . .”  Instead, try “R. B. G. thanks”. 
+The authors acknowledge the guidance and resources provided throughout the PDE4435 module at Middlesex University Dubai, which encouraged a design-thinking approach to advanced robotics projects. They also acknowledge the use of Claude AI during project development.
 
-\bibliographystyle{IEEEtran}
-\bibliography{references}
+\begin{thebibliography}{00}
+\bibitem{amp}
+AMP, ``AMP ONE: Automated Waste Sorting Systems \& Facility,'' 2026. [Online]. Available: \url{https://ampsortation.com/products/amp-one}.
+
+\bibitem{saenz}
+J.~Saenz \textit{et al.}, ``Automated disassembly of e-waste---requirements on modeling of processes and product states,'' \textit{Frontiers in Robotics and AI}, vol.~11, p.~1303279, 2024.
+
+\bibitem{Franaszek}
+M.~Franaszek, P.~Rachakonda, and K.~S.~Saidi, ``Filtering Organized 3D Point Clouds for Bin Picking Applications,'' \textit{Applied Sciences}, vol.~14, no.~3, p.~961, Jan.~2024.
+
+\bibitem{Fager}
+P.~Fager, R.~Hanson, \AA.~Fasth-Berglund, and S.~Ekered, ``Supervised and unsupervised learning in vision-guided robotic bin picking applications for mixed-model assembly,'' \textit{Procedia CIRP}, vol.~104, pp.~1304--1309, 2021.
+
+\bibitem{Taweesoontorn}
+T.~Taweesoontorn, S.~Yanyong, and P.~Konghuayrob, ``Hybrid Deep Learning and FAST--BRISK 3D Object Detection Technique for Bin-picking Application,'' \textit{Sensors and Materials}, vol.~36, no.~4, pp.~1389--1404, 2024.
+
+\bibitem{prasetyo2024}
+J.~Prasetyo, ``RC7\_Python,'' Jan.~2024. [Online]. Available: \url{https://github.com/judhi/RC7_Python}.
+
+\bibitem{b2}
+EPSON Robotics, ``RC8.0 Reference Manual,'' EPSON Factory Automation, 2023. [Online]. Available: \url{https://www.epson.com}.
+
+\bibitem{epsonvt6}
+Epson America, Inc., ``Epson VT6L All-in-One 6-Axis Robots,'' Epson US, 2026. [Online]. Available: \url{https://epson.com/Support/Robots/6-Axis-Robots/VT-Series/Epson-VT6L-All-in-One-6-Axis-Robots/s/SPT_VT6L-A901SS}.
+
+\bibitem{vlachos}
+I.~Vlachos \textit{et al.}, ``Smart and flexible manufacturing systems using Autonomous Guided Vehicles (AGVs) and the Internet of Things (IoT),'' \textit{Int. J. Production Research}, pp.~1--22, 2022.
+\end{thebibliography}
 
 \end{document}
