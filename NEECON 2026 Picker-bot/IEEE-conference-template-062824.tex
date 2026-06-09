@@ -23,16 +23,22 @@
 \title{Automated Component Recovery and Custom Kit Assembly System for Educational Circuit Kits\\}
 
 \author{\IEEEauthorblockN{1\textsuperscript{st} Aman Mishra}
-\IEEEauthorblockA{\textit{MSc Robotics} \\
+\IEEEauthorblockA{\textit{Computer Engineering and Informatics} \\
 \textit{Middlesex University Dubai}\\
 Dubai, UAE \\
-M00983641}
+a.mishra@mdx.ac.ae}
 \and
 \IEEEauthorblockN{2\textsuperscript{nd} Faseeh Mohammed}
-\IEEEauthorblockA{\textit{MSc Robotics} \\
+\IEEEauthorblockA{\textit{Computer Engineering and Informatics} \\
 \textit{Middlesex University Dubai}\\
 Dubai, UAE \\
-M01088120}
+ff416@live.mdx.ac.uk}
+\and
+\IEEEauthorblockN{3\textsuperscript{rd} Dr. Judhi Prasetyo}
+\IEEEauthorblockA{\textit{Computer Engineering and Informatics} \\
+\textit{Middlesex University Dubai}\\
+Dubai, UAE \\
+j.prasetyo@mdx.ac.ae}
 }
 
 \maketitle
@@ -104,11 +110,11 @@ Rather than greedily passing every single detected piece of hardware down into t
 
 A critical requirement of the system is the ability to translate pixel positions in the camera image into physical millimetre coordinates within the robot's world frame. This is achieved through a planar homography transformation, which provides a projective mapping between the two coordinate spaces.
 
-To establish this mapping, a 77-point calibration grid is used. The grid is arranged as 11 columns and 7 rows on the workspace surface, with a uniform spacing of 20 mm between adjacent points in both axes (see Fig.\ref{fig:calibration_grid}). The world X-coordinate of each column decreases from +100 mm to $-$100 mm moving left to right, and the world Y-coordinate of each row increases from 410 mm to 530 mm moving top to bottom, yielding a calibrated workspace area of 200 mm $\times$ 120 mm. The operator positions the camera normally above the workspace, captures a reference image of the grid (\texttt{graph\_paper.jpg}), and uses the \texttt{tools/calibration\_clicker.py} utility to click each of the 77 intersection points. A second utility, \texttt{tools/sort\_and\_tag\_pixels.py}, then sorts the recorded pixel coordinates column by column and appends the corresponding world coordinates to produce a four-column CSV file mapping each pixel position to its physical counterpart.
+To establish this mapping, a 77-point calibration grid is used. The grid is arranged as 11 columns and 7 rows on the workspace surface, with a uniform spacing of 20 mm between adjacent points in both axes (see Fig.\ref{fig:calibration_grid}). The world X-coordinate of each column decreases from +100 mm to $-$100 mm moving left to right, and the world Y-coordinate of each row increases from 410 mm to 530 mm moving top to bottom, yielding a calibrated workspace area of 200 mm $\times$ 120 mm. The camera is first placed normally above the workspace to capture a reference image of the grid (\texttt{graph\_paper.jpg}), and then the \texttt{tools/calibration\_clicker.py} utility is run to click each of the 77 intersection points. A second utility, \texttt{tools/sort\_and\_tag\_pixels.py}, then sorts the recorded pixel coordinates column by column and appends the corresponding world coordinates to produce a four-column CSV file mapping each pixel position to its physical counterpart.
 
 The homography matrix $\mathbf{H}$ is then computed using OpenCV's \texttt{findHomography} function with the standard least-squares (SLS) method (method parameter set to 0, not RANSAC). This choice is deliberate: the RANdom SAmple Consensus (RANSAC) estimator is designed to reject outliers, but the corner calibration points, which define the extremes of the workspace, represent valid and important constraints. Treating them as potential outliers would introduce systematic error near the workspace boundaries. With 77 evenly distributed reference points, the need to account for distortion is not required, and thus, the SLS solution provides a robust estimate without requiring outlier rejection. At runtime, any detected pixel centroid $(p_x, p_y)$ is transformed to world coordinates $(w_x, w_y)$ by applying \texttt{cv2.perspectiveTransform} with $\mathbf{H}$.
 
-When the camera is repositioned vertically, the physical scale of the image changes, which invalidates the original pixel-to-millimetre mapping. To address this without requiring a full recalibration, the system includes a height recalibration routine invoked via \texttt{pickerbot.py {-}{-}calibrate}. The operator is presented with a ruler image and clicks two points that are known to be exactly 20 mm apart. The pixel distance between those clicks is measured, and a scale factor is computed as follows. Let $r_h$ and $r_v$ denote the mean pixel distance per 20 mm in the horizontal and vertical axes, derived from the original calibration data. For a ruler measurement with angle $\theta$ relative to the horizontal, the expected pixel distance at that orientation is given by the anisotropic norm:
+When the camera is repositioned vertically, the physical scale of the image changes, which invalidates the original pixel-to-millimetre mapping. To address this without requiring a full recalibration, the system includes a height recalibration routine invoked via \texttt{pickerbot.py {-}{-}calibrate}. A reference image is presented to the user where they can click two points that are known to be exactly 20 mm apart. The pixel distance between those clicks is measured, and a scale factor is computed as follows. Let $r_h$ and $r_v$ denote the mean pixel distance per 20 mm in the horizontal and vertical axes, derived from the original calibration data. For a ruler measurement with angle $\theta$ relative to the horizontal, the expected pixel distance at that orientation is given by the anisotropic norm:
 
 \begin{equation}
   d_{\mathrm{expected}} = \sqrt{\left(r_h \cos\theta\right)^2 + \left(r_v \sin\theta\right)^2}
@@ -181,7 +187,7 @@ Fig.\ref{fig:architecture}  is a visual representation of the codebase.The Pytho
 
 The primary entry point, \texttt{pickerbot.py}, acts as the end-to-end orchestrator for a pick session. It accepts a \texttt{{-}{-}src} argument that specifies the detection source, either the live camera feed or a path to a static image file, and a \texttt{{-}{-}calibrate} flag that triggers the height recalibration GUI and exits without proceeding to detection. During a normal run, the script loads the homography calibration from the CSV specified in \texttt{config.json}, invokes the detection pipeline to obtain a list of centroid pixel coordinates, translates each pixel position to world coordinates using the calibration matrix, and then dispatches the full list to \texttt{epsonPickAll} over the TCP connection.
 
-The second entry point, \texttt{detect\_and\_classify.py}, isolates the vision layer from the robot control layer entirely. It is used during development and testing to verify detection performance without establishing a robot connection. When invoked with a file path argument it processes a static image; when invoked without arguments it opens the live camera feed and presents a real-time confidence threshold slider, allowing the operator to observe detection results at different sensitivity levels.
+The second entry point, \texttt{detect\_and\_classify.py}, isolates the vision layer from the robot control layer entirely. It is used during development and testing to verify detection performance without establishing a robot connection. When invoked with a file path argument it processes a static image; when invoked without arguments it opens the live camera feed and presents a real-time confidence threshold slider, allowing the observation of detection results at different sensitivity levels.
 
 The third entry point, \texttt{teleop\_mouse.py}, provides an interactive positioning mode. The script loads the calibration data, connects to the robot, and displays the calibration reference image on screen with all 77 calibration points annotated. Each mouse click on the image is transformed through the homography matrix and forwarded as a \texttt{MOVE} command to the robot, enabling manual positioning of the arm without running the full detection pipeline. This mode is particularly useful for verifying the accuracy of the spatial calibration before committing to an automated pick session.
 

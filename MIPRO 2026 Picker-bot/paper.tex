@@ -24,13 +24,14 @@
 \author{
 \IEEEauthorblockN{
 A. Mishra\IEEEauthorrefmark{1},
-F. Mohammed\IEEEauthorrefmark{1}
+F. Mohammed\IEEEauthorrefmark{1},
+J. Prasetyo\IEEEauthorrefmark{1}
 }
 
 \IEEEauthorblockA{\IEEEauthorrefmark{1}
-MSc Robotics, Middlesex University Dubai, Dubai, UAE}
+Department of Computer Engineering and Informatics, Middlesex University Dubai, Dubai, UAE}
 
-m00983641@mdx.ac.ae, m01088120@mdx.ac.ae
+a.mishra@live.mdx.ac.uk, ff416@live.mdx.ac.uk, j.prasetyo@mdx.ac.ae
 }
 
 \maketitle
@@ -111,11 +112,11 @@ Once the vision system successfully extracts the precise $x$ and $y$ pixel centr
 
 A critical requirement of the system is the ability to translate pixel positions in the camera image into physical millimetre coordinates within the robot's world frame. This is achieved through a planar homography transformation, which provides a projective mapping between the two coordinate spaces.
 
-To establish this mapping, a 77-point calibration grid is used, arranged as 11 columns and 7 rows on the workspace surface with 20\,mm spacing (Fig.~\ref{fig:calibration_grid}). The world $X$-coordinate of each column decreases from $+100$\,mm to $-100$\,mm left to right, and the world $Y$-coordinate increases from 410\,mm to 530\,mm top to bottom, yielding a calibrated area of $200\,\text{mm} \times 120\,\text{mm}$. The operator captures a reference image of the grid and uses \texttt{tools/calibration\_clicker.py} to click each of the 77 intersection points. A second utility, \texttt{tools/sort\_and\_tag\_pixels.py}, sorts the recorded pixel coordinates and appends the corresponding world coordinates to produce a four-column CSV file.
+To establish this mapping, a 77-point calibration grid is used, arranged as 11 columns and 7 rows on the workspace surface with 20\,mm spacing (Fig.~\ref{fig:calibration_grid}). The world $X$-coordinate of each column decreases from $+100$\,mm to $-100$\,mm left to right, and the world $Y$-coordinate increases from 410\,mm to 530\,mm top to bottom, yielding a calibrated area of $200\,\text{mm} \times 120\,\text{mm}$. A reference image of the grid is captured and \texttt{tools/calibration\_clicker.py} is used to click each of the 77 intersection points. A second utility, \texttt{tools/sort\_and\_tag\_pixels.py}, sorts the recorded pixel coordinates and appends the corresponding world coordinates to produce a four-column CSV file.
 
 The homography matrix $\mathbf{H}$ is computed using OpenCV's \texttt{findHomography} with the standard least-squares (SLS) method rather than RANSAC. This choice is deliberate: the RANSAC estimator is designed to reject outliers, but the corner calibration points represent valid boundary constraints. Treating them as potential outliers would introduce systematic error near the workspace boundaries. At runtime, any detected pixel centroid $(p_x, p_y)$ is transformed to world coordinates $(w_x, w_y)$ via \texttt{cv2.perspectiveTransform} with $\mathbf{H}$.
 
-When the camera is repositioned vertically, the physical scale of the image changes, invalidating the original pixel-to-millimetre mapping. A height recalibration routine invoked via \texttt{pickerbot.py -{}-calibrate} addresses this without requiring a full recalibration. The operator clicks two points 20\,mm apart on a ruler image; the pixel distance between those clicks is measured and a scale factor is computed. Let $r_h$ and $r_v$ denote the mean pixel distance per 20\,mm in the horizontal and vertical axes from the original calibration. For a ruler measurement at angle $\theta$ relative to the horizontal, the expected pixel distance is:
+When the camera is repositioned vertically, the physical scale of the image changes, invalidating the original pixel-to-millimetre mapping. A height recalibration routine invoked via \texttt{pickerbot.py -{}-calibrate} addresses this without requiring a full recalibration. A reference image is presented to manually select two points 20\,mm apart on a ruler image; the pixel distance between those clicks is measured and a scale factor is computed. Let $r_h$ and $r_v$ denote the mean pixel distance per 20\,mm in the horizontal and vertical axes from the original calibration. For a ruler measurement at angle $\theta$ relative to the horizontal, the expected pixel distance is:
 
 \begin{equation}
   d_{\mathrm{expected}} = \sqrt{\left(r_h \cos\theta\right)^2 + \left(r_v \sin\theta\right)^2}
@@ -168,7 +169,7 @@ Commands are transmitted as plain ASCII strings in the format \texttt{CMD~X~Y~Z~
 
 The robot-side program (\texttt{Epson/Pickerbot\_Receiver/Main.prg}) is written in Epson SPEL+, the proprietary scripting language for the RC8 controller, using a community TCP template~\cite{prasetyo2024} with predefined motion initialization parameters. After initialization it opens a TCP server on network channel \#201 at port 2001 and waits for an incoming client connection before entering its command-processing loop.
 
-Each received string is parsed by space delimiter, with the first token identifying the command and subsequent tokens providing coordinate arguments as floating-point values. The \texttt{PICK} command implements the most complex motion sequence (Fig.~\ref{fig:pick_trajectory}): the arm first lifts vertically from its current position, then translates horizontally to an elevated waypoint at $(x, y)$ with tool orientation $u$, and finally descends to the exact pick position. Once there, a digital output closes the gripper and a dwell time ensures a reliable mechanical grip. The robot then executes a second Jump3 sequence, lifting clear of the workspace and traveling to the predefined \texttt{PlacePoint} container, before deactivating the gripper output and returning to standby. A network error handler attempts to reopen the server socket on transient faults, allowing the system to recover without operator intervention.
+Each received string is parsed by space delimiter, with the first token identifying the command and subsequent tokens providing coordinate arguments as floating-point values. The \texttt{PICK} command implements the most complex motion sequence (Fig.~\ref{fig:pick_trajectory}): the arm first lifts vertically from its current position, then translates horizontally to an elevated waypoint at $(x, y)$ with tool orientation $u$, and finally descends to the exact pick position. Once there, a digital output closes the gripper and a dwell time ensures a reliable mechanical grip. The robot then executes a second Jump3 sequence, lifting clear of the workspace and traveling to the predefined \texttt{PlacePoint} container, before deactivating the gripper output and returning to standby. A network error handler attempts to reopen the server socket on transient faults, allowing the system to recover without human intervention.
 
 \subsection{Software Architecture and Entry Points}
 
