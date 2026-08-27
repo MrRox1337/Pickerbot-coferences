@@ -37,7 +37,7 @@
 
 \begin{document}
 
-\title{Automated Component Recovery and Custom Kit Assembly System for Educational Circuit Kits\\}
+\title{Automated Component Recovery and Custom Kit Assembly System for Educational Circuit Kits}
 
 \author{\IEEEauthorblockN{1\textsuperscript{st} Aman Mishra}
 \IEEEauthorblockA{\textit{Computer Eng. and Informatics} \\
@@ -162,6 +162,7 @@ Once the vision system extracts each component's pixel centroid and class label,
 
 
 \subsection{Spatial Calibration and Coordinate Mapping}
+
 \begin{figure}[b]
   \centering
   \includegraphics[width=0.66\columnwidth]{imgs/graph_paper.jpg}
@@ -173,9 +174,15 @@ Translating pixel positions into millimetre coordinates in the robot's world fra
 
 The mapping uses a 77-point grid of 11 columns by 7 rows at 20~mm spacing (Fig.~\ref{fig:calibration_grid}). World X decreases from $+$100~mm to $-$100~mm left to right and world Y increases from 410~mm to 530~mm top to bottom, giving a calibrated area of 200~mm $\times$ 120~mm. A reference image is captured with the camera normal to the workspace; \texttt{calibration\_clicker.py} records the intersections and \texttt{sort\_and\_tag\_pixels.py} sorts them column by column, appending world coordinates to produce a pixel-to-world CSV.
 
-The homography $\mathbf{H}$ is computed with OpenCV's \texttt{findHomography} using standard least squares (SLS), not RANSAC. This is deliberate: the corner points define the workspace extremes and are valid constraints, so rejecting them as outliers would introduce systematic error near the boundaries. With 77 evenly distributed points, SLS is robust without outlier rejection. At runtime each detected centroid is mapped via \texttt{cv2.perspectiveTransform}.
+The homography $\mathbf{H}$ is computed with OpenCV's \texttt{findHomography} using standard least squares (SLS), not RANSAC. This is deliberate: the corner points define the workspace extremes and are valid constraints, so rejecting them as outliers would introduce systematic error near the boundaries. With 77 evenly distributed points, SLS is robust without outlier rejection. At runtime each detected centroid is mapped via \texttt{cv2.perspectiveTransform}. $\mathbf{H}$ is a mapping of the bench plane alone, so every detected centroid is treated as coplanar with the calibration grid; no per-class height offset is applied, and modules of appreciable thickness therefore retain a residual lateral error addressed in Section~\ref{sec:limits}.
 
-Repositioning the camera vertically rescales the image and invalidates the mapping. Rather than re-clicking all 77 intersections, a recalibration routine has the user mark two points a known 20~mm apart and derives $s = d_{\mathrm{measured}} / d_{\mathrm{expected}}$, where $d_{\mathrm{expected}} = \sqrt{(r_h\cos\theta)^2 + (r_v\sin\theta)^2}$ uses the separate horizontal and vertical pixel pitches $r_h, r_v$. This anisotropic form accommodates lens geometry and non-square sampling. All 77 coordinates are then scaled about the grid centre and cached.
+Repositioning the camera vertically rescales the image and invalidates the mapping. Rather than re-clicking all 77 intersections, a recalibration routine has the user mark two points a known 20~mm apart, from which
+\begin{equation}
+  s = \frac{d_{\mathrm{measured}}}{d_{\mathrm{expected}}},
+  \qquad
+  d_{\mathrm{expected}} = \sqrt{(r_h\cos\theta)^2 + (r_v\sin\theta)^2}
+\end{equation}
+is derived, with $r_h$ and $r_v$ the separate horizontal and vertical pixel pitches. This anisotropic form accommodates lens geometry and non-square sampling. All 77 coordinates are then scaled about the grid centre and cached.
 
 \begin{figure}[b]
   \centering
@@ -195,7 +202,7 @@ For multi-component picks, \texttt{epsonPickAll} iterates over a list of world-c
 \subsection{EPSON RC8 Robot Program}
 \label{sec:epson}
 
-\texttt{Epson/Pickerbot\_Receiver/Main.prg}), the robot-side program is written in Epson SPEL+, the RC8 controller's scripting language, building on a template script \cite{prasetyo2024} with predefined motion-initialization parameters. After initialization it opens a TCP server on channel \#201 at port 2001 and waits for a client before entering its command loop.
+\texttt{Epson/Pickerbot\_Receiver/Main.prg}, the robot-side program is written in Epson SPEL+, the RC8 controller's scripting language, building on a template script \cite{prasetyo2024} with predefined motion-initialization parameters. After initialization it opens a TCP server on channel \#201 at port 2001 and waits for a client before entering its command loop.
 
 Each string is split on spaces into a command token and floating-point arguments. \texttt{PICK} is the most complex: a three-phase Jump3 trajectory lifts the arm vertically, translates to an elevated waypoint above $(x, y)$ with the tool at orientation $u$, and descends to the pick position, where a digital output closes the gripper and a dwell ensures a reliable grip. A second Jump3 lifts clear and transports the component to a predefined \texttt{PlacePoint}, where the output is deactivated to release it before the arm returns to standby. A network error handler reopens the socket and resumes listening rather than halting, letting the system recover from transient interruptions without operator intervention.
 
@@ -213,7 +220,7 @@ The codebase (Fig.~\ref{fig:architecture}) is built around a shared package, \te
 The primary entry point, \texttt{pickerbot.py}, orchestrates an end-to-end pick session: \texttt{{-}{-}src} selects the detection source (live camera or static image) and \texttt{{-}{-}calibrate} launches the height-recalibration GUI. In a normal run it loads the homography CSV named in \texttt{config.json}, runs detection, maps each centroid to world coordinates and dispatches the list to \texttt{epsonPickAll}. The second, \texttt{detect\_and\_classify.py}, isolates the vision layer for testing without a robot: given a file path it processes a static image, and without arguments opens the live feed with a confidence-threshold slider. The third, \texttt{teleop\_mouse.py}, provides interactive positioning, displaying the reference image with all 77 points annotated and sending each click through $\mathbf{H}$ as a \texttt{MOVE} command---useful for verifying calibration accuracy before an automated session.
 
 \subsection{Robotic Control and Simulation}
-Manipulation is done in a simulated digital twin in the EPSON RC8.0 environment. While the system can cover any workspace size, the initial setup mapped a 200~mm $\times$ 120~mm evaluation space with a deposit point 280~mm above its centre. The platform is the EPSON VT6-A901S~\cite{b2}, a 6-axis arm with 980~mm reach suited to pick-and-place requiring varied approach angles and high repeatability; full installation, safety, and operational specifications appear in the Epson VT6 documentation \cite{epsonvt6}. The arm is existing teaching-laboratory equipment, and the system was built around the hardware already available rather than around a purpose-selected platform. Additionally, since the control interface assumes only that the controller accepts Cartesian targets over a socket, the pipeline transfers unchanged to manipulators of different reach and cost, provided the target controller exposes a Cartesian interface or an inverse-kinematics solver to resolve the joint angles; verifying this on other platforms is beyond the scope of this paper.
+Manipulation is done in a simulated digital twin in the EPSON RC8.0 environment. While the system can cover any workspace size, the initial setup mapped a 200~mm $\times$ 120~mm evaluation space with a deposit point 280~mm above its centre. The platform is the EPSON VT6-A901S~\cite{b2}, a 6-axis arm with 980~mm reach suited to pick-and-place requiring varied approach angles and high repeatability; full installation, safety, and operational specifications appear in the Epson VT6 documentation \cite{epsonvt6}. The arm is existing teaching-laboratory equipment, and the system was built around the hardware already available rather than around a purpose-selected platform. Additionally, since the control interface assumes that the controller accepts Cartesian targets over a socket, the pipeline transfers unchanged to manipulators of different reach and cost, provided the target controller exposes a Cartesian interface or an inverse-kinematics solver to resolve the joint angles; verifying this on other platforms is beyond the scope of this paper. The end effector is modelled only as the binary digital output and fixed dwell described in Section~\ref{sec:epson}: no jaw or suction geometry is configured, so the Jump3 clearances and dwell are trajectory-level parameters rather than values validated against a physical tool. Selecting that tool, and with it the payload and approach constraints it imposes, belongs to physical deployment.
 
 \section{Results}
 The following subsections report observed behaviour across three layers: perception, spatial reasoning, and supervised manipulation.
@@ -242,23 +249,24 @@ The following subsections report observed behaviour across three layers: percept
   \end{tabular}
 \end{table}
 
-The migration to YOLOv8-OBB substantially improved detection reliability. The final model classified Arduino, ESP32 and LCD modules and recovered the resting angle $\theta$ with the centroid $(cx, cy)$ in a single forward pass without geometric post-processing, absorbing the glare, clutter and background texture that had destabilised the prototype. The explicit ``noise'' class the prototype classifier required became unnecessary: the detector trains on the three component classes alone and treats everything else as background, so spurious regions are rejected by the confidence threshold rather than a dedicated reject class.
+The migration to YOLOv8-OBB substantially improved detection reliability. The final model classified Arduino, ESP32 and LCD modules and recovered the resting angle $\theta$ with the centroid $(cx, cy)$ in a single forward pass without geometric post-processing, absorbing the glare, clutter and background texture that had destabilised the prototype. The explicit reject class the prototype classifier required became unnecessary: the detector trains on the three component classes alone and treats everything else as background, so spurious regions are rejected by the confidence threshold rather than a dedicated reject class.
 
-Table~\ref{tab:eval}(a) reports per-class validation metrics. The model reached an $mAP_{50}$ of 0.995 at 1.000 recall and 0.984 precision, with a fully diagonal normalised confusion matrix: no inter-class confusion and no component predicted as background. The $mAP_{50\text{--}95}$ of 0.974 matters more because OBB matching uses \emph{rotated} IoU---a detection whose yaw is substantially wrong fails to match at the higher IoU thresholds---so a high value certifies that the recovered angle $\theta$, not merely the class label, is accurate. Convergence was rapid: $mAP_{50}$ exceeded 0.99 by epoch~7 and $mAP_{50\text{--}95}$ passed 0.90 by epoch~17, the remainder refining localisation. A fixed confidence threshold of 0.65 eliminated the few glare-induced false positives, with no additional non-maximum suppression.
+Table~\ref{tab:eval}(a) reports per-class validation metrics. The model reached an $mAP_{50}$ of 0.995 at 1.000 recall and 0.984 precision, with a fully diagonal normalised confusion matrix: no inter-class confusion and no component predicted as background. The $mAP_{50\text{--}95}$ of 0.974 matters more because OBB matching uses \emph{rotated} intersection over union (IoU)---a detection whose yaw is substantially wrong fails to match at the higher IoU thresholds---so a high value certifies that the recovered angle $\theta$, not merely the class label, is accurate. Convergence was rapid: $mAP_{50}$ exceeded 0.99 by epoch~7 and $mAP_{50\text{--}95}$ passed 0.90 by epoch~17, the remainder refining localisation. A fixed confidence threshold of 0.65 eliminated the few glare-induced false positives, with no additional non-maximum suppression.
 
 Perception is not the throughput bottleneck. End-to-end vision cost is 16.9~ms per frame (Table~\ref{tab:eval}(b)), around 59~fps; cycle time is dominated by the Jump3 trajectory and the fixed inter-command delay discussed in Section~\ref{sec:limits}.
 
 \subsubsection*{Scope of this evaluation}
-The validation split contains 6 images and 18 instances. No separate test partition was withheld, since the dataset was captured in the cell the system operates in, so the images measuring performance also informed checkpoint selection. These figures are therefore an in-distribution characterisation of the deployment cell, not an estimate of generalisation. At this sample size a recall of 18/18 carries a 95\% Wilson interval of $[0.82, 1.00]$, and precision cannot resolve differences of a few percent; the interval, rather than the point estimate, is the honest summary.
+The validation split contains 6 images and 18 instances. No separate test partition was withheld, so the images measuring performance also informed checkpoint selection. These figures are therefore an in-distribution characterisation of the deployment cell, not an estimate of generalisation. At this sample size a recall of 18/18 carries a 95\% Wilson interval of $[0.82, 1.00]$, and precision cannot resolve differences of a few percent; the interval, rather than the point estimate, is the honest summary. A single 50/6 split is also a poor estimator at this scale: $k$-fold cross-validation over the pooled 56 images would condition the estimate far better, and is planned for physical deployment alongside a capture session withheld in full.
 
-\subsection{Spatial Accuracy of the Pixel-to-World Mapping}
+\subsection{Spatial Calibration and Mapping Accuracy}
 \label{sec:spatial}
 
 The homography reliably bridged image and workspace, the 77-point grid defining a calibrated region of roughly $200~\text{mm} \times 120~\text{mm}$ covering the full overhead field of view. Using SLS rather than RANSAC kept the boundary corners from being discarded as outliers, which would have contracted that area. Height recalibration absorbed camera repositioning in seconds without re-clicking every intersection, and was verified through \texttt{teleop\_mouse.py}, where each click produced a \texttt{MOVE} command whose terminal position visually matched the clicked feature.
 
 \subsection{Comparison with the Deterministic Baseline}
 \label{sec:baseline}
-\begin{table}[t]
+
+\begin{table}[b]
   \caption{Deterministic Baseline vs.\ YOLOv8-OBB, Five Workbench Scenes}
   \label{tab:baseline}
   \centering
@@ -288,7 +296,7 @@ The control pipeline executed the pull-based kitting end-to-end. Given a BOQ, th
 
 The TCP/IP interface dispatched the full command set (\texttt{JUMP}, \texttt{GO}, \texttt{MOVE}, \texttt{PICK}, \texttt{STANDBY}) reliably across extended runs, each validated by an \texttt{OK} reply before the next was sent. The \texttt{PICK} primitive executed its three-phase Jump3 trajectory in every trial, and synthetic failures exercised the abort path, returning the manipulator to standby rather than continuing through an undefined state. These are functional verifications of the control layer in simulation rather than a measured grasp-success rate, which requires the physical cell (Section~\ref{sec:limits}).
 \section{Conclusion and Future Work}
-The Picker-Bot system shifted component kitting from a ``push'' model to a project-specific ``pull'' model. Its cornerstone was the migration from deterministic OpenCV prototypes to YOLOv8-OBB: where the prototype was highly sensitive to environmental shifts, the final model reached an $mAP_{50}$ of 0.995 and an $mAP_{50\text{--}95}$ of 0.974, while the 77-point homography mapped the full overhead field of view onto the workspace, showing that oriented bin-picking is viable in cluttered educational settings without 3D point-cloud hardware. Filtering detections through the BOQ engine lets the system both detect parts and manage inventory, addressing the goal of reducing procurement costs and e-waste. These are the two capabilities prior recovery work left open: the oriented detector supplies the resting angle axis-aligned classification cannot, and the BOQ engine supplies the demand specification destination-driven sorting does not model.
+The Picker-Bot system shifted component kitting from a ``push'' model to a project-specific ``pull'' model. Its cornerstone was the migration from deterministic OpenCV prototypes to YOLOv8-OBB: where the prototype was highly sensitive to environmental shifts, the final model reached an $mAP_{50}$ of 0.995 and an $mAP_{50\text{--}95}$ of 0.974 on an in-distribution validation split, while the 77-point homography mapped the full overhead field of view onto the workspace, showing that oriented bin-picking is viable in cluttered educational settings without 3D point-cloud hardware. Filtering detections through the BOQ engine lets the system both detect parts and manage inventory, addressing the goal of reducing procurement costs and e-waste. These are the two capabilities prior recovery work left open: the oriented detector supplies the resting angle axis-aligned classification cannot, and the BOQ engine supplies the demand specification destination-driven sorting does not model.
 \subsection{Limitations}
 \label{sec:limits}
 Three limits bound what the reported numbers support. The detector was evaluated on a 6-image, 18-instance validation split drawn from the same capture session as the training data and not withheld from checkpoint selection, so it characterises in-distribution accuracy in the deployment cell rather than generalisation; a held-out session, and ideally a second lighting configuration, is the next measurement to take. Separately, the manipulation layer is verified functionally in simulation but its grasp-success rate is not quantified, since a meaningful figure requires the physical robot and real components. Finally, the detector covers three module classes, reflecting the dataset assembled rather than a ceiling of the architecture, since additional classes require only an extended annotation set and no change to the network or the downstream pipeline.
@@ -300,7 +308,7 @@ Addressing these limits begins with deployment to physical hardware, which requi
 \subsection{Concluding Remarks}
 The Picker-Bot system provides a technically sound, sustainable solution for managing returned educational circuit kits. By integrating Oriented Bounding Box detection, planar homography, and TCP/IP control, it shows that modern AI can turn ``loose waste'' into project-ready assets, setting a precedent for ``Re-X'' (Recovery and Re-use) activities in microelectronic environments and bridging waste management with logistical efficiency.
 \section*{Acknowledgment}
-The authors acknowledge the guidance and resources of the PDE4435 module, which encouraged a design-thinking approach to advanced robotics projects, and the use of Claude code to set up the baseline masking filters for detection with sliders for human-operated tuning before transitioning to YOLOv8-OBB.
+The authors acknowledge the guidance and resources of the PDE4435 module, which encouraged a design-thinking approach to advanced robotics projects, Bilal Baslar for recommending the YOLOv8-OBB architecture adopted in Phase 2, and the use of Claude Code to set up the baseline masking filters for detection with sliders for human-operated tuning before transitioning to YOLOv8-OBB.
 
 \begin{thebibliography}{00}
 \bibitem{luo2024}
@@ -312,18 +320,18 @@ AMP, ``AMP ONE: Automated Waste Sorting Systems \& Facility,'' 2026. [Online]. A
 \bibitem{saenz}
 J. Saenz \textit{et al.}, ``Automated disassembly of e-waste---requirements on modeling of processes and product states,'' \textit{Frontiers in Robotics and AI}, vol. 11, p. 1303279, 2024.
 \bibitem{Franaszek}
-M. Franaszek, P. Rachakonda, and K. S. Saidi, ``Filtering Organized 3D Point Clouds for Bin Picking Applications,'' \textit{Applied Sciences}, vol. 14, no. 3, p. 961, Jan. 2024.
+M. Franaszek, P. Rachakonda, and K. S. Saidi, ``Filtering organized 3D point clouds for bin picking applications,'' \textit{Applied Sciences}, vol. 14, no. 3, p. 961, Jan. 2024.
 \bibitem{Fager}
 P. Fager, R. Hanson, \text{\AA}. Fasth-Berglund, and S. Ekered, ``Supervised and unsupervised learning in vision-guided robotic bin picking applications for mixed-model assembly,'' \textit{Procedia CIRP}, vol. 104, pp. 1304--1309, 2021.
 \bibitem{Taweesoontorn}
-T. Taweesoontorn, S. Yanyong, and P. Konghuayrob, ``Hybrid Deep Learning and FAST--BRISK 3D Object Detection Technique for Bin-picking Application,'' \textit{Sensors and Materials}, vol. 36, no. 4, pp. 1389--1404, 2024.
+T. Taweesoontorn, S. Yanyong, and P. Konghuayrob, ``Hybrid deep learning and FAST--BRISK 3D object detection technique for bin-picking application,'' \textit{Sensors and Materials}, vol. 36, no. 4, pp. 1389--1404, 2024.
 \bibitem{prasetyo2024}
 J. Prasetyo, ``RC7\_Python,'' Jan. 03, 2024. Available: \url{https://github.com/judhi/RC7_Python}. [Accessed: Apr. 07, 2026].
-\bibitem{b2} EPSON Robotics, ``RC8.0 Reference Manual,'' EPSON Factory Automation, 2023. [Online]. Available: https://www.epson.com
+\bibitem{b2} EPSON Robotics, ``RC8.0 reference manual,'' EPSON Factory Automation, 2023. [Online]. Available: \url{https://www.epson.com}. [Accessed: Apr. 07, 2026].
 \bibitem{epsonvt6}
-Epson America, Inc., ``Epson VT6L All-in-One 6-Axis Robots | Support,'' Epson US, 2026. [Online]. Available: \url{https://epson.com/Support/Robots/6-Axis-Robots/VT-Series/Epson-VT6L-All-in-One-6-Axis-Robots/s/SPT_VT6L-A901SS}. [Accessed: Apr. 07, 2026].
+Epson America, Inc., ``Epson VT6L all-in-one 6-axis robots | support,'' Epson US, 2026. [Online]. Available: \url{https://epson.com/Support/Robots/6-Axis-Robots/VT-Series/Epson-VT6L-All-in-One-6-Axis-Robots/s/SPT_VT6L-A901SS}. [Accessed: Apr. 07, 2026].
 \bibitem{vlachos}
-I. Vlachos, R. M. Pascazzi, M. Ntotis, K. Spanaki, S. Despoudi, and P. Repoussis, ``Smart and flexible manufacturing systems using Autonomous Guided Vehicles (AGVs) and the Internet of Things (IoT),'' \textit{International Journal of Production Research}, pp. 1--22, 2022.
+I. Vlachos, R. M. Pascazzi, M. Ntotis, K. Spanaki, S. Despoudi, and P. Repoussis, ``Smart and flexible manufacturing systems using Autonomous Guided Vehicles (AGVs) and the internet of things (IoT),'' \textit{International Journal of Production Research}, pp. 1--22, 2022.
 \end{thebibliography}
 
 \end{document}
